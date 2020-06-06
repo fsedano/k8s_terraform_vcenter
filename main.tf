@@ -1,28 +1,51 @@
 
+
 resource "rke_cluster" "cluster" {
   addons_include = [
     "https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta8/aio/deploy/recommended.yaml"
   ]
   addon_job_timeout = 60
-  network {
-    plugin = "flannel"
+    network {
+      plugin = "flannel"
+    }
+  services {
+    kubelet {
+      extra_args = {
+        cloud-provider="vsphere",
+        cloud-config="/etc/kubernetes/vsphere.conf"
+      }
+    }
+    kube_api {
+      extra_args = {
+        cloud-provider="vsphere",
+        cloud-config="/etc/kubernetes/vsphere.conf"
+      }
+    }
+
+    kube_controller {
+      extra_args = {
+        cloud-provider="vsphere",
+        cloud-config="/etc/kubernetes/vsphere.conf"
+      }
+    }
+
   }
   nodes {
     address = vsphere_virtual_machine.vm[0].default_ip_address
     user    = "root"
-    role    = ["controlplane", "worker", "etcd"]
+    role    = ["controlplane", "etcd"]
     ssh_key = file("~/.ssh/id_rsa")
   }
   nodes {
     address = vsphere_virtual_machine.vm[1].default_ip_address
     user    = "root"
-    role    = ["controlplane", "worker", "etcd"]
+    role    = ["controlplane", "etcd"]
     ssh_key = file("~/.ssh/id_rsa")
   }
   nodes {
     address = vsphere_virtual_machine.vm[2].default_ip_address
     user    = "root"
-    role    = ["controlplane", "worker", "etcd"]
+    role    = ["controlplane", "etcd"]
     ssh_key = file("~/.ssh/id_rsa")
   }
   nodes {
@@ -37,18 +60,7 @@ nodes {
     role    = ["worker"]
     ssh_key = file("~/.ssh/id_rsa")
   }
-nodes {
-    address = vsphere_virtual_machine.vm[5].default_ip_address
-    user    = "root"
-    role    = ["worker"]
-    ssh_key = file("~/.ssh/id_rsa")
-  }
-nodes {
-    address = vsphere_virtual_machine.vm[6].default_ip_address
-    user    = "root"
-    role    = ["worker"]
-    ssh_key = file("~/.ssh/id_rsa")
-  }
+
 
 }
 
@@ -61,7 +73,6 @@ resource "local_file" "kube_cluster_yaml" {
 provider "vsphere" {
   user           = "administrator@vsphere.local"
   password       = "C1$c01234"
-  #vsphere_server = "192.168.20.202"
   vsphere_server = var.vsphere_server
 
   # If you have a self-signed cert
@@ -70,38 +81,38 @@ provider "vsphere" {
 
 
 data "vsphere_datacenter" "dc" {
-  name = "DatacenterLM"
+  name = var.datacenter
 }
 
 data "vsphere_datastore" "datastore" {
-  name          = "Datastore"
+  name          = var.datastore
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
 data "vsphere_resource_pool" "pool" {
-  name          = "Pool1"
+  name          = var.pool
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
 data "vsphere_network" "network" {
-  name          = "PG_VL30"
+  name          = var.network
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
 data "vsphere_virtual_machine" "template" {
-  name          = "ubuntu16"
+  name          = var.template_name
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
 data "vsphere_distributed_virtual_switch" "dvs" {
-  name          = "DSTrunk"
+  name          = var.dvs
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
 
 resource "vsphere_virtual_machine" "vm" {
   name             = "kube16-t${count.index}"
-  count = 7
+  count = 5
   nested_hv_enabled = true
   resource_pool_id = data.vsphere_resource_pool.pool.id
   datastore_id     = data.vsphere_datastore.datastore.id
@@ -109,6 +120,23 @@ resource "vsphere_virtual_machine" "vm" {
   num_cpus = 2
   memory   = 8192
   guest_id = "ubuntu64Guest"
+  folder = "Kube-test"
+
+connection {
+    type     = "ssh"
+    user     = "root"
+    private_key = file("~/.ssh/id_rsa")
+    host = self.default_ip_address
+  }
+provisioner "remote-exec" {
+  inline = [
+    "mkdir /etc/kubernetes"
+  ]
+}
+provisioner "file" {
+    source = "vsphere_storage/vsphere.conf"
+    destination = "/etc/kubernetes/vsphere.conf"
+}
 
 
 clone {
@@ -133,10 +161,11 @@ clone {
 
   disk {
     label = "disk0"
-    size  = 32
+    size  = var.disk_size
   }
 }
 
+/*
 //https://computingforgeeks.com/how-to-deploy-ceph-storage-cluster-on-ubuntu-18-04-lts/
 resource "vsphere_virtual_machine" "mon" {
   name             = "kube16-ceph-mon${count.index}"
@@ -282,3 +311,8 @@ clone {
     size  = 32
   }
 }
+
+output "ip_address" {
+  value = vsphere_virtual_machine.vm[0].default_ip_address
+}
+*/
