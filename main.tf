@@ -34,31 +34,31 @@ resource "rke_cluster" "cluster" {
     address = vsphere_virtual_machine.vm[0].default_ip_address
     user    = "root"
     role    = ["controlplane", "etcd"]
-    ssh_key = file("~/.ssh/id_rsa")
+    ssh_key = file("ssh/id_rsa")
   }
   nodes {
     address = vsphere_virtual_machine.vm[1].default_ip_address
     user    = "root"
     role    = ["controlplane", "etcd"]
-    ssh_key = file("~/.ssh/id_rsa")
+    ssh_key = file("ssh/id_rsa")
   }
   nodes {
     address = vsphere_virtual_machine.vm[2].default_ip_address
     user    = "root"
     role    = ["controlplane", "etcd"]
-    ssh_key = file("~/.ssh/id_rsa")
+    ssh_key = file("ssh/id_rsa")
   }
   nodes {
     address = vsphere_virtual_machine.vm[3].default_ip_address
     user    = "root"
     role    = ["worker"]
-    ssh_key = file("~/.ssh/id_rsa")
+    ssh_key = file("ssh/id_rsa")
   }
 nodes {
     address = vsphere_virtual_machine.vm[4].default_ip_address
     user    = "root"
     role    = ["worker"]
-    ssh_key = file("~/.ssh/id_rsa")
+    ssh_key = file("ssh/id_rsa")
   }
 
 
@@ -125,7 +125,7 @@ resource "vsphere_virtual_machine" "vm" {
 connection {
     type     = "ssh"
     user     = "root"
-    private_key = file("~/.ssh/id_rsa")
+    private_key = file("ssh/id_rsa")
     host = self.default_ip_address
   }
 provisioner "remote-exec" {
